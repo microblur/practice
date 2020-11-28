@@ -3,18 +3,17 @@
 # 语言：Python3.9
 # ----------------------------------------
 
+import os
 import copy
-# from googlesearch import search
+import time
 from urllib.parse import unquote, quote
 from bs4 import BeautifulSoup
 import csv
 
 import requests
 import re
-from lxml import etree
 
 LINKS_FINISHED = []  # 已抓取的linkedin用户
-RESULT = []
 
 
 def login(laccount, lpassword):
@@ -59,17 +58,22 @@ def parse(content, url):
             employee["Location"] = locationName[0]
         else:
             employee.append(" ")
-        print(employee)
-        RESULT.append(employee)
+        return employee
 
 
-def write_csv(result_list):
+def write_csv(result_employee, company_name):
     """ 将结果写入CSV文件 """
-    with open('result.csv', 'w', newline='', encoding='utf-8-sig') as csvfile:
-        fieldnames = ["First Name", "Last Name", "Occupation", "Location", "LinkedIn-url"]
-        filewriter = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        filewriter.writeheader()
-        filewriter.writerows(result_list)
+    filename = company_name + ' result.csv'
+    fieldnames = ["First Name", "Last Name", "Occupation", "Location", "LinkedIn-url"]
+    if not os.path.isfile(filename):
+        with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerow(result_employee)
+    else:
+        with open(filename, 'a', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writerow(result_employee)
 
 
 def crawl(url, s):
@@ -86,7 +90,8 @@ def crawl(url, s):
                     failure += 1
                     continue
                 if r.status_code == 200:
-                    parse(r.content, url)
+                    employee = parse(r.content, url)
+                    return employee
                     break
                 else:
                     print('%s %s' % (r.status_code, url))
@@ -98,7 +103,9 @@ def crawl(url, s):
 
 
 if __name__ == '__main__':
-    s = login(laccount='1850806727@qq.com', lpassword='ywsa,7939')  # 测试账号
+    laccount=input('Input account email:')
+    lpassword=input('Input account password:')
+    s = login(laccount=laccount, lpassword=lpassword)
     company_name = input('Input the company you want to crawl:')
 
     for page in range(0, 5):
@@ -119,12 +126,13 @@ if __name__ == '__main__':
                 for href in hrefs:
                     href = href.replace("&", "")
                     href = href.replace("nz.linkedin.com", "www.linkedin.com")
-                    crawl(href, copy.deepcopy(s))
+                    employee = crawl(href, copy.deepcopy(s))
+                    write_csv(employee,company_name)
+                    time.sleep(5)
                 results += hrefs
                 failure = 0
             else:
                 failure += 2
                 print('search failed: %s' % r.status_code)
-    write_csv(RESULT)
     if failure >= 10:
         print('search failed: %s' % url)
