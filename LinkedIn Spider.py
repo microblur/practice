@@ -121,9 +121,6 @@ if __name__ == '__main__':
                     href = href.replace("nz.linkedin.com", "www.linkedin.com")
                     crawl(href, copy.deepcopy(s))
                 results += hrefs
-                tree = etree.HTML(r.content)
-                nextpage_txt = tree.xpath('//div[@id="page"]/a[@class="n" and contains(text(), "next")]/@href')
-                url = 'http://www.google.com' + nextpage_txt[0].strip() if nextpage_txt else ''
                 failure = 0
             else:
                 failure += 2
