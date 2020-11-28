@@ -77,7 +77,7 @@ def parse(content, url):
 
 
 def write_csv(result_list):
-    with open('result.csv', 'w') as csvfile:
+    with open('result.csv', 'w', newline='', encoding='utf-8-sig') as csvfile:
         filewriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         fieldnames = ["First Name", "Last Name", "Occupation", "Location", "LinkedIn-url"]
