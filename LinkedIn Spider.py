@@ -7,7 +7,6 @@ import os
 import copy
 import time
 from urllib.parse import unquote, quote
-from bs4 import BeautifulSoup
 import csv
 
 import requests
@@ -23,14 +22,13 @@ def login(laccount, lpassword):
     HOMEPAGE_URL = 'https://www.linkedin.com'
     LOGIN_URL = 'https://www.linkedin.com/uas/login-submit'
 
-    html = client.get(HOMEPAGE_URL).content
-    soup = BeautifulSoup(html, "html.parser")
-    csrf = soup.find('input', {'name': 'loginCsrfParam'}).get('value')
+    html = client.get(HOMEPAGE_URL).text
+    csrf = re.findall('"loginCsrfParam" value="(.*?)"', html)
 
     login_information = {
         'session_key': laccount,
         'session_password': lpassword,
-        'loginCsrfParam': csrf,
+        'loginCsrfParam': csrf[0],
         'trk': 'guest_homepage-basic_sign-in-submit'
     }
 
@@ -121,7 +119,6 @@ if __name__ == '__main__':
                 print('failure + 1 because of exception')
                 continue
             if r.status_code == 200:
-                soup = BeautifulSoup(r.content, 'html.parser')
                 hrefs = re.findall("https://nz\..*?\&", r.text)
                 for href in hrefs:
                     href = href.replace("&", "")
@@ -133,6 +130,7 @@ if __name__ == '__main__':
                 failure = 0
             else:
                 failure += 2
+                print(r.text)
                 print('search failed: %s' % r.status_code)
     if failure >= 10:
         print('search failed: %s' % url)
