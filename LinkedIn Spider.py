@@ -103,8 +103,8 @@ def crawl(url, s):
 
 
 if __name__ == '__main__':
-    laccount=input('Input account email:')
-    lpassword=input('Input account password:')
+    laccount = input('Input account email:')
+    lpassword = input('Input account password:')
     s = login(laccount=laccount, lpassword=lpassword)
     company_name = input('Input the company you want to crawl:')
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
                     href = href.replace("&", "")
                     href = href.replace("nz.linkedin.com", "www.linkedin.com")
                     employee = crawl(href, copy.deepcopy(s))
-                    write_csv(employee,company_name)
+                    write_csv(employee, company_name)
                     time.sleep(5)
                 results += hrefs
                 failure = 0
