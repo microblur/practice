@@ -111,27 +111,28 @@ if __name__ == '__main__':
     company_name = input('Input the company you want to crawl:')
 
     url = 'https://www.google.com/search?q=%7C+Linkedin+' + quote(
-        company_name) + '+site%3Anz.linkedin.com'
+        company_name) + '+site%3Anz.linkedin.comt&start='+str(page * 10)
     results = []
     failure = 0
-    if len(url) > 0 and failure < 10:
-        try:
-            r = requests.get(url, timeout=10)
-        except Exception as e:
-            failure += 1
-            print('failure + 1 because of exception')
-        if r.status_code == 200:
-            hrefs = re.findall("https://nz\..*?\&", r.text)
-            for href in hrefs:
-                href = href.replace("&", "")
-                href = href.replace("nz.linkedin.com", "www.linkedin.com")
-                employee = crawl(href, copy.deepcopy(s))
-                time.sleep(5)
-            results += hrefs
-            failure = 0
-        else:
-            failure += 2
-            print(r.text)
-            print('search failed: %s' % r.status_code)
-    if failure >= 10:
-        print('search failed: %s' % url)
+    for page in range(0, 3):
+        if len(url) > 0 and failure < 10:
+            try:
+                r = requests.get(url, timeout=10)
+            except Exception as e:
+                failure += 1
+                print('failure + 1 because of exception')
+            if r.status_code == 200:
+                hrefs = re.findall("https://nz\..*?\&", r.text)
+                for href in hrefs:
+                    href = href.replace("&", "")
+                    href = href.replace("nz.linkedin.com", "www.linkedin.com")
+                    employee = crawl(href, copy.deepcopy(s))
+                    time.sleep(5)
+                results += hrefs
+                failure = 0
+            else:
+                failure += 2
+                print(r.text)
+                print('search failed: %s' % r.status_code)
+        if failure >= 10:
+            print('search failed: %s' % url)
