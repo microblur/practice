@@ -4,8 +4,8 @@
 # ----------------------------------------
 
 import os
-import copy
 import time
+import copy
 from urllib.parse import unquote, quote
 import csv
 
@@ -56,7 +56,10 @@ def parse(content, url):
             employee["Location"] = locationName[0]
         else:
             employee.append(" ")
-        return employee
+        write_csv(employee, company_name)
+        print("employee done")
+    else:
+        print("not a valid employee")
 
 
 def write_csv(result_employee, company_name):
@@ -88,14 +91,15 @@ def crawl(url, s):
                     failure += 1
                     continue
                 if r.status_code == 200:
-                    employee = parse(r.content, url)
-                    return employee
+                    parse(r.content, url)
                     break
                 else:
                     print('%s %s' % (r.status_code, url))
                     failure += 2
             if failure >= 10:
                 print('Failed: %s' % url)
+        else:
+            print("already exists")
     except Exception as e:
         pass
 
@@ -106,31 +110,29 @@ if __name__ == '__main__':
     s = login(laccount=laccount, lpassword=lpassword)
     company_name = input('Input the company you want to crawl:')
 
-    for page in range(0, 5):
-        url = 'https://www.google.com/search?q=%7C+Linkedin+' + quote(
-            company_name) + '+site%3Anz.linkedin.com&start=' + str(page * 10)
-        results = []
-        failure = 0
-        while len(url) > 0 and failure < 10:
-            try:
-                r = requests.get(url, timeout=10)
-            except Exception as e:
-                failure += 1
-                print('failure + 1 because of exception')
-                continue
-            if r.status_code == 200:
-                hrefs = re.findall("https://nz\..*?\&", r.text)
-                for href in hrefs:
-                    href = href.replace("&", "")
-                    href = href.replace("nz.linkedin.com", "www.linkedin.com")
-                    employee = crawl(href, copy.deepcopy(s))
-                    write_csv(employee, company_name)
-                    time.sleep(5)
-                results += hrefs
-                failure = 0
-            else:
-                failure += 2
-                print(r.text)
-                print('search failed: %s' % r.status_code)
+    url = 'https://www.google.com/search?q=%7C+Linkedin+' + quote(
+        company_name) + '+site%3Anz.linkedin.com'
+    results = []
+    failure = 0
+    if len(url) > 0 and failure < 10:
+        try:
+            r = requests.get(url, timeout=10)
+        except Exception as e:
+            failure += 1
+            print('failure + 1 because of exception')
+        if r.status_code == 200:
+            hrefs = re.findall("https://nz\..*?\&", r.text)
+            print(len(hrefs))
+            for href in hrefs:
+                href = href.replace("&", "")
+                href = href.replace("nz.linkedin.com", "www.linkedin.com")
+                employee = crawl(href, copy.deepcopy(s))
+                time.sleep(5)
+            results += hrefs
+            failure = 0
+        else:
+            failure += 2
+            print(r.text)
+            print('search failed: %s' % r.status_code)
     if failure >= 10:
         print('search failed: %s' % url)
