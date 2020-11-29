@@ -122,7 +122,6 @@ if __name__ == '__main__':
             print('failure + 1 because of exception')
         if r.status_code == 200:
             hrefs = re.findall("https://nz\..*?\&", r.text)
-            print(len(hrefs))
             for href in hrefs:
                 href = href.replace("&", "")
                 href = href.replace("nz.linkedin.com", "www.linkedin.com")
