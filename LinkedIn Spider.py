@@ -1,8 +1,3 @@
-# encoding=utf-8
-# ----------------------------------------
-# 语言：Python3.9
-# ----------------------------------------
-
 import os
 import time
 import copy
@@ -58,9 +53,9 @@ def parse(content, url, log_filename):
         else:
             employee.append(" ")
         write_csv(employee, company_name)
-        print('.', end='')
+        print('.', end='', flush=True)
     else:
-        print('.', end='')
+        print('.', end='', flush=True)
         with open(log_filename, 'a') as f:
             f.write("not a valid employee %s\n" % url)
 
@@ -97,16 +92,16 @@ def crawl(url, s, log_filename):
                     parse(r.content, url, log_filename)
                     break
                 else:
-                    print('.', end='')
+                    print('.', end='', flush=True)
                     with open(log_filename, 'a') as f:
                         f.write('%s %s\n' % (r.status_code, url))
                     failure += 2
             if failure >= 10:
-                print('.', end='')
+                print('.', end='', flush=True)
                 with open(log_filename, 'a') as f:
                     f.write('Failed: %s\n' % url)
         else:
-            print('.', end='')
+            print('.', end='', flush=True)
             with open(log_filename, 'a') as f:
                 f.write("already exists : %s\n" %url)
     except Exception as e:
@@ -118,8 +113,8 @@ if __name__ == '__main__':
     lpassword = getpass.getpass('Input account password:')
     s = login(laccount=laccount, lpassword=lpassword)
     company_name = input('Input the company name:')
+    print('Application is preparing data now', end='', flush=True)
     log_filename = company_name+'log.txt'
-    print('Application is preparing data now', end='')
     results = []
     failure = 0
     for page in range(0, 3):
@@ -130,7 +125,7 @@ if __name__ == '__main__':
                 r = requests.get(url, timeout=10)
             except Exception as e:
                 failure += 1
-                print('.', end='')
+                print('.', end='', flush=True)
                 with open(log_filename, 'a') as f:
                     f.write('failure + 1 because of exception %s\n' %url)
             if r.status_code == 200:
@@ -144,11 +139,11 @@ if __name__ == '__main__':
                 failure = 0
             else:
                 failure += 2
-                print('.', end='')
+                print('.', end='', flush=True)
                 with open(log_filename, 'a') as f:
                     f.write('search failed: %s %s\n' % (r.status_code, url))
         if failure >= 10:
-            print('.', end='')
+            print('.', end='', flush=True)
             with open(log_filename, 'a') as f:
                 f.write('search failed: %s\n' % url)
-    print("Data is written to " + company_name + ' result.csv file')
+    print("Data is written to " + company_name + ' result.csv file', flush=True)
