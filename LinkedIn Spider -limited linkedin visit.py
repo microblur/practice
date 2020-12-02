@@ -1,8 +1,8 @@
 import os
 import time
-import copy
 from urllib.parse import unquote, quote
 import csv
+import getpass
 
 import requests
 import re
@@ -10,31 +10,40 @@ import re
 LINKS_FINISHED = []  # 已抓取的linkedin用户
 
 
-def parse(content, url, log_filename):
+def login(laccount, lpassword):
+    """ 根据账号密码登录linkedin """
+    client = requests.Session()
+
+    HOMEPAGE_URL = 'https://www.linkedin.com'
+    LOGIN_URL = 'https://www.linkedin.com/uas/login-submit'
+
+    html = client.get(HOMEPAGE_URL).text
+    csrf = re.findall('"loginCsrfParam" value="(.*?)"', html)
+
+    login_information = {
+        'session_key': laccount,
+        'session_password': lpassword,
+        'loginCsrfParam': csrf[0],
+        'trk': 'guest_homepage-basic_sign-in-submit'
+    }
+
+    client.post(LOGIN_URL, data=login_information)
+    client.get(HOMEPAGE_URL)
+    return client
+
+
+def parse(content, url, log_filename, employee):
     """ 解析一个员工的Linkedin主页 """
     content = unquote(content.decode("utf-8")).replace('&quot;', '"')
-    employee = {"LinkedIn-url": url}
-    firstname = re.findall('"multiLocaleFirstName":{.*?:(.*?)}', content)
-    lastname = re.findall('"multiLocaleLastName":{.*?:(.*?)}', content)
-    if firstname and lastname:
-        employee["First Name"] = firstname[1]
-        employee["Last Name"] = lastname[1]
-
-        occupation = re.findall('"headline":"(.*?)"', content)
-        if occupation:
-            employee["Occupation"] = occupation[0]
-
-        locationName = re.findall('"locationName":"(.*?)"', content)
-        if locationName:
-            employee["Location"] = locationName[0]
-        else:
-            employee.append(" ")
-        write_csv(employee, company_name)
+    occupation = re.findall('"headline":"(.*?)"', content)
+    if occupation:
+        employee["Occupation"] = occupation[0]
         print('.', end='', flush=True)
     else:
         print('.', end='', flush=True)
         with open(log_filename, 'a') as f:
             f.write("not a valid employee %s\n" % url)
+    time.sleep(1)
 
 
 def write_csv(result_employee, company_name):
@@ -52,7 +61,7 @@ def write_csv(result_employee, company_name):
             writer.writerow(result_employee)
 
 
-def crawl(url, s, log_filename):
+def crawl(url, s, log_filename, employee):
     """ 抓取每一个搜索结果 """
     try:
         if len(url) > 0 and url not in LINKS_FINISHED:
@@ -61,12 +70,12 @@ def crawl(url, s, log_filename):
             failure = 0
             while failure < 10:
                 try:
-                    r = s.get(url, timeout=10)
+                    r = s.get(url, timeout=100)
                 except Exception as e:
                     failure += 1
                     continue
                 if r.status_code == 200:
-                    parse(r.content, url, log_filename)
+                    parse(r.content, url, log_filename, employee)
                     break
                 else:
                     print('.', end='', flush=True)
@@ -86,9 +95,18 @@ def crawl(url, s, log_filename):
 
 
 if __name__ == '__main__':
+    detailed_search = input('Do you want to log in to Linkedin To get more information? Yse/No:').lower()
+    if detailed_search == 'yes' or detailed_search == 'y':
+        detailed_search = 1
+        laccount = input('Input account email:')
+        lpassword = getpass.getpass('Input account password:')
+        s = login(laccount=laccount, lpassword=lpassword)
+    else:
+        detailed_search = 0
     company_name = input('Input the company name:')
     print('Application is preparing data now', end='', flush=True)
     log_filename = company_name+'log.txt'
+    num_of_fail_occupation_employee = 0
     results = []
     num_of_results = 1
     failure = 0
@@ -111,14 +129,25 @@ if __name__ == '__main__':
                     employee = employees[index]
                     nameindex = employee[1].rfind(">")
                     occupationindex=employee[2].find(" - ")
-                    employee_result = {"Name": employee[1][nameindex+1:], "Occupation":
+                    if occupationindex == -1 and detailed_search == 1:
+                        employee_result = {"Name": employee[1][nameindex + 1:], "Occupation":
+                            " ", "LinkedIn-url": employee[0]}
+                        employee_result['LinkedIn-url']= employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
+                        crawl(employee_result['LinkedIn-url'], s, log_filename, employee_result)
+                    elif occupationindex == -1:
+                        employee_result = {"Name": employee[1][nameindex + 1:], "Occupation":
+                            " ", "LinkedIn-url": employee[0]}
+                        num_of_fail_occupation_employee += 1
+                    else:
+                        employee_result = {"Name": employee[1][nameindex+1:], "Occupation":
                         employee[2][:occupationindex], "LinkedIn-url": employee[0]}
-                    print(employee_result)
                     if employee_result["LinkedIn-url"] not in results:
+                        print(employee_result)
                         results.append(employee_result["LinkedIn-url"])
                         write_csv(employee_result, company_name)
                 failure = 0
                 page += 1
+                print('.', end='', flush=True)
                 time.sleep(1)
             else:
                 failure += 2
@@ -129,4 +158,8 @@ if __name__ == '__main__':
             print('.', end='', flush=True)
             with open(log_filename, 'a') as f:
                 f.write('search failed: %s\n' % url)
+    print()
+    with open(log_filename, 'a') as f:
+        f.write('Total employees on linkedin: ' + str(len(results)) + '\n')
+        f.write('Employees without occupation: '+str(num_of_fail_occupation_employee))
     print("Data is written to " + company_name + ' result.csv file', flush=True)
