@@ -44,7 +44,7 @@ def parse(content, url, log_filename, employee):
         print('.', end='', flush=True)
         with open(log_filename, 'a') as f:
             f.write("not a valid employee %s\n" % url)
-    time.sleep(1)
+    time.sleep(5)
 
 
 def write_csv(result_employee, company_name):
