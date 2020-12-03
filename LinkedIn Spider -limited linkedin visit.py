@@ -1,6 +1,7 @@
 import os
 import time
-from urllib.parse import unquote, quote
+import copy
+from urllib.parse import unquote, quote, urlencode
 import csv
 import getpass
 
@@ -97,12 +98,12 @@ def crawl(url, s, log_filename, employee):
 if __name__ == '__main__':
     detailed_search = input('Do you want to log in to Linkedin To get more information? Yse/No:').lower()
     if detailed_search == 'yes' or detailed_search == 'y':
-        detailed_search = 1
+        detailed_search = True
         laccount = input('Input account email:')
         lpassword = getpass.getpass('Input account password:')
         s = login(laccount=laccount, lpassword=lpassword)
     else:
-        detailed_search = 0
+        detailed_search = False
     company_name = input('Input the company name:')
     print('Application is preparing data now', end='', flush=True)
     log_filename = company_name+'log.txt'
@@ -124,25 +125,27 @@ if __name__ == '__main__':
                 with open(log_filename, 'a') as f:
                     f.write('failure + 1 because of exception %s\n' %url)
             if r.status_code == 200:
-                employees = re.findall('<a href="/url\?q=(https://nz.linkedin.com/in.*?)&amp.*?><h3 class="zBAuLc"><div class="BNeawe vvjwJb AP7Wnd">(.*?) - (.*?) - LinkedIn</div>', r.text)
+                employees = re.findall('<a href="/url\?q=(https://nz.linkedin.com/in/.*?)[\/]?&amp.*?><h3 class="zBAuLc"><div class="BNeawe vvjwJb AP7Wnd">(.*?)[\s]?-[\s](.*?)[\s]?[\|\-][\s]?LinkedIn</div>', r.text)
                 for index in range(len(employees)):
                     employee = employees[index]
                     nameindex = employee[1].rfind(">")
-                    occupationindex=employee[2].find(" - ")
-                    if occupationindex == -1 and detailed_search == 1:
-                        employee_result = {"Name": employee[1][nameindex + 1:], "Occupation":
+                    occupationindex = max(employee[2].rfind('%s' %s) for s in ('-', '...'))
+                    employee_name = employee[1][nameindex + 1:]
+                    if '&#' in employee_name:
+                        employee_name = employee_name.encode('utf-8').decode('GB2312')
+                    if detailed_search and occupationindex == -1:
+                        employee_result = {"Name": employee_name, "Occupation":
                             " ", "LinkedIn-url": employee[0]}
                         employee_result['LinkedIn-url']= employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
-                        crawl(employee_result['LinkedIn-url'], s, log_filename, employee_result)
+                        crawl(employee_result['LinkedIn-url'], copy.deepcopy(s), log_filename, employee_result)
                     elif occupationindex == -1:
-                        employee_result = {"Name": employee[1][nameindex + 1:], "Occupation":
+                        employee_result = {"Name": employee_name, "Occupation":
                             " ", "LinkedIn-url": employee[0]}
                         num_of_fail_occupation_employee += 1
                     else:
-                        employee_result = {"Name": employee[1][nameindex+1:], "Occupation":
+                        employee_result = {"Name": employee_name, "Occupation":
                         employee[2][:occupationindex], "LinkedIn-url": employee[0]}
                     if employee_result["LinkedIn-url"] not in results:
-                        print(employee_result)
                         results.append(employee_result["LinkedIn-url"])
                         write_csv(employee_result, company_name)
                 failure = 0
