@@ -8,7 +8,7 @@ import getpass
 import requests
 import re
 
-LINKS_FINISHED = []  # 已抓取的linkedin用户
+NAMES_FINISHED = []  # 已抓取的linkedin用户
 
 
 def login(laccount, lpassword):
@@ -131,23 +131,25 @@ if __name__ == '__main__':
                     nameindex = employee[1].rfind(">")
                     occupationindex = max(employee[2].rfind('%s' %s) for s in ('-', '...'))
                     employee_name = employee[1][nameindex + 1:]
-                    if '&#' in employee_name:
-                        employee_name = employee_name.encode('utf-8').decode('GB2312')
-                    if detailed_search and occupationindex == -1:
-                        employee_result = {"Name": employee_name, "Occupation":
-                            " ", "LinkedIn-url": employee[0]}
-                        employee_result['LinkedIn-url']= employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
-                        crawl(employee_result['LinkedIn-url'], copy.deepcopy(s), log_filename, employee_result)
-                    elif occupationindex == -1:
-                        employee_result = {"Name": employee_name, "Occupation":
-                            " ", "LinkedIn-url": employee[0]}
-                        num_of_fail_occupation_employee += 1
-                    else:
-                        employee_result = {"Name": employee_name, "Occupation":
-                        employee[2][:occupationindex], "LinkedIn-url": employee[0]}
-                    if employee_result["LinkedIn-url"] not in results:
-                        results.append(employee_result["LinkedIn-url"])
-                        write_csv(employee_result, company_name)
+                    additional_search = re.findall('%s [\|] .*? [\|] (.*?) ' %employee_name, r.text)
+                    company_to_check = employee[2][occupationindex + 1:]
+                    if company_to_check.strip().lower() == company_name.strip().lower():
+                        if detailed_search and occupationindex == -1 and additional_search:
+                            employee_result = {"Name": employee_name, "Occupation":
+                                additional_search, "LinkedIn-url": employee[0]}
+                            employee_result['LinkedIn-url'] = employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
+                            crawl(employee_result['LinkedIn-url'], copy.deepcopy(s), log_filename, employee_result)
+                        elif occupationindex == -1:
+                            employee_result = {"Name": employee_name, "Occupation":
+                                " ", "LinkedIn-url": employee[0]}
+                            num_of_fail_occupation_employee += 1
+                        else:
+                            employee_result = {"Name": employee_name, "Occupation":
+                            employee[2][:occupationindex], "LinkedIn-url": employee[0]}
+                        if employee_name not in NAMES_FINISHED:
+                            NAMES_FINISHED.append(employee_name)
+                            results.append(employee_result["LinkedIn-url"])
+                            write_csv(employee_result, company_name)
                 failure = 0
                 page += 1
                 print('.', end='', flush=True)
