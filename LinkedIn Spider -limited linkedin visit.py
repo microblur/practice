@@ -65,28 +65,25 @@ def write_csv(result_employee, company_name):
 def crawl(url, s, log_filename, employee):
     """ 抓取每一个搜索结果 """
     try:
-        if len(url) > 0 and url not in LINKS_FINISHED:
-            LINKS_FINISHED.append(url)
-
-            failure = 0
-            while failure < 10:
-                try:
-                    r = s.get(url, timeout=100)
-                except Exception as e:
-                    failure += 1
-                    continue
-                if r.status_code == 200:
-                    parse(r.content, url, log_filename, employee)
-                    break
-                else:
-                    print('.', end='', flush=True)
-                    with open(log_filename, 'a') as f:
-                        f.write('%s %s\n' % (r.status_code, url))
-                    failure += 2
-            if failure >= 10:
+        failure = 0
+        while failure < 10:
+            try:
+                r = s.get(url, timeout=100)
+            except Exception as e:
+                failure += 1
+                continue
+            if r.status_code == 200:
+                parse(r.content, url, log_filename, employee)
+                break
+            else:
                 print('.', end='', flush=True)
                 with open(log_filename, 'a') as f:
-                    f.write('Failed: %s\n' % url)
+                    f.write('%s %s\n' % (r.status_code, url))
+                failure += 2
+        if failure >= 10:
+            print('.', end='', flush=True)
+            with open(log_filename, 'a') as f:
+                f.write('Failed: %s\n' % url)
         else:
             print('.', end='', flush=True)
             with open(log_filename, 'a') as f:
@@ -119,46 +116,54 @@ if __name__ == '__main__':
         if len(url) > 0 and failure < 10:
             try:
                 r = requests.get(url, timeout=10)
+                if r.status_code == 200:
+                    employees = re.findall('<a href="/url\?q=(https://nz.linkedin.com/in/.*?)[\/]?&amp.*?><h3 class="zBAuLc"><div class="BNeawe vvjwJb AP7Wnd">(.*?)[\s]?-[\s](.*?)[\s]?[\|\-][\s]?LinkedIn</div>', r.text)
+                    for index in range(len(employees)):
+                        employee = employees[index]
+                        nameindex = employee[1].rfind(">")
+                        occupationindex = max(employee[2].rfind('%s' %s) for s in ('-', '...'))
+                        employee_name = employee[1][nameindex + 1:]
+                        additional_search = re.findall('(?i)%s (.*?) at %s' %(employee_name, company_name), r.text)
+                        if additional_search:
+                            additional_searchindex = max(additional_search[0].rfind('%s' % s) for s in ('.', '|'))
+                            additional_search = additional_search[0][additional_searchindex+1:]
+                        company_to_check = employee[2][occupationindex + 1:]
+                        if company_to_check.strip().lower() == company_name.strip().lower():
+                            if detailed_search and occupationindex == -1:
+                                employee_result = {"Name": employee_name, "Occupation":
+                                    additional_search, "LinkedIn-url": employee[0]}
+                                employee_result['LinkedIn-url'] = employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
+                                crawl(employee_result['LinkedIn-url'], copy.deepcopy(s), log_filename, employee_result)
+                            elif occupationindex == -1 and additional_search:
+                                employee_result = {"Name": employee_name, "Occupation":
+                                    additional_search, "LinkedIn-url": employee[0]}
+                                num_of_fail_occupation_employee += 1
+                            elif occupationindex == -1:
+                                employee_result = {"Name": employee_name, "Occupation":
+                                    " ", "LinkedIn-url": employee[0]}
+                                num_of_fail_occupation_employee += 1
+                            else:
+                                employee_result = {"Name": employee_name, "Occupation":
+                                employee[2][:occupationindex], "LinkedIn-url": employee[0]}
+                            if employee_name not in NAMES_FINISHED:
+                                NAMES_FINISHED.append(employee_name)
+                                results.append(employee_result["LinkedIn-url"])
+                                write_csv(employee_result, company_name)
+                else:
+                    failure += 2
+                    print('.', end='', flush=True)
+                    with open(log_filename, 'a') as f:
+                        f.write('search failed: %s %s\n' % (r.status_code, url))
             except Exception as e:
                 failure += 1
                 print('.', end='', flush=True)
+                print(e)
                 with open(log_filename, 'a') as f:
-                    f.write('failure + 1 because of exception %s\n' %url)
-            if r.status_code == 200:
-                employees = re.findall('<a href="/url\?q=(https://nz.linkedin.com/in/.*?)[\/]?&amp.*?><h3 class="zBAuLc"><div class="BNeawe vvjwJb AP7Wnd">(.*?)[\s]?-[\s](.*?)[\s]?[\|\-][\s]?LinkedIn</div>', r.text)
-                for index in range(len(employees)):
-                    employee = employees[index]
-                    nameindex = employee[1].rfind(">")
-                    occupationindex = max(employee[2].rfind('%s' %s) for s in ('-', '...'))
-                    employee_name = employee[1][nameindex + 1:]
-                    additional_search = re.findall('%s [\|] .*? [\|] (.*?) ' %employee_name, r.text)
-                    company_to_check = employee[2][occupationindex + 1:]
-                    if company_to_check.strip().lower() == company_name.strip().lower():
-                        if detailed_search and occupationindex == -1 and additional_search:
-                            employee_result = {"Name": employee_name, "Occupation":
-                                additional_search, "LinkedIn-url": employee[0]}
-                            employee_result['LinkedIn-url'] = employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
-                            crawl(employee_result['LinkedIn-url'], copy.deepcopy(s), log_filename, employee_result)
-                        elif occupationindex == -1:
-                            employee_result = {"Name": employee_name, "Occupation":
-                                " ", "LinkedIn-url": employee[0]}
-                            num_of_fail_occupation_employee += 1
-                        else:
-                            employee_result = {"Name": employee_name, "Occupation":
-                            employee[2][:occupationindex], "LinkedIn-url": employee[0]}
-                        if employee_name not in NAMES_FINISHED:
-                            NAMES_FINISHED.append(employee_name)
-                            results.append(employee_result["LinkedIn-url"])
-                            write_csv(employee_result, company_name)
-                failure = 0
-                page += 1
-                print('.', end='', flush=True)
-                time.sleep(1)
-            else:
-                failure += 2
-                print('.', end='', flush=True)
-                with open(log_filename, 'a') as f:
-                    f.write('search failed: %s %s\n' % (r.status_code, url))
+                    f.write('failure + 1 because of exception %s\n' % url)
+            failure = 0
+            page += 1
+            print('.', end='', flush=True)
+            time.sleep(1)
         if failure >= 10:
             print('.', end='', flush=True)
             with open(log_filename, 'a') as f:
