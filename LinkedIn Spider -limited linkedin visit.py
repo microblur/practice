@@ -131,13 +131,12 @@ if __name__ == '__main__':
                         if company_to_check.strip().lower() == company_name.strip().lower():
                             if detailed_search and occupationindex == -1:
                                 employee_result = {"Name": employee_name, "Occupation":
-                                    additional_search, "LinkedIn-url": employee[0]}
+                                    " ", "LinkedIn-url": employee[0]}
                                 employee_result['LinkedIn-url'] = employee_result['LinkedIn-url'].replace("nz.linkedin.com", "www.linkedin.com")
                                 crawl(employee_result['LinkedIn-url'], copy.deepcopy(s), log_filename, employee_result)
                             elif occupationindex == -1 and additional_search:
                                 employee_result = {"Name": employee_name, "Occupation":
                                     additional_search, "LinkedIn-url": employee[0]}
-                                num_of_fail_occupation_employee += 1
                             elif occupationindex == -1:
                                 employee_result = {"Name": employee_name, "Occupation":
                                     " ", "LinkedIn-url": employee[0]}
