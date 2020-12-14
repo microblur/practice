@@ -49,17 +49,9 @@ def parse(content, url, log_filename, employee):
 
 def write_csv(result_employee, company_name):
     """ 将结果写入CSV文件 """
-    filename = company_name + ' result.csv'
-    fieldnames = ["Name", "Occupation", "LinkedIn-url"]
-    if not os.path.isfile(filename):
-        with open(filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
-            writer.writerow(result_employee)
-    else:
-        with open(filename, 'a', newline='', encoding='utf-8-sig') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writerow(result_employee)
+    with open(company_name, 'a', newline='', encoding='utf-8-sig') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writerow(result_employee)
 
 
 def crawl(url, s, log_filename, employee):
@@ -93,7 +85,7 @@ def crawl(url, s, log_filename, employee):
 
 
 if __name__ == '__main__':
-    detailed_search = input('Do you want to log in to Linkedin To get more information? Yse/No:').lower()
+    detailed_search = input('Do you want to log in to Linkedin To get more information? Yes/No: - [default:No]\n').lower()
     if detailed_search == 'yes' or detailed_search == 'y':
         detailed_search = True
         laccount = input('Input account email:')
@@ -104,11 +96,16 @@ if __name__ == '__main__':
     company_name = input('Input the company name:')
     print('Application is preparing data now', end='', flush=True)
     log_filename = company_name+'log.txt'
+    company_filename = company_name + ' result.csv'
     num_of_fail_occupation_employee = 0
     results = []
     num_of_results = 1
     failure = 0
     page = 0
+    with open(company_filename, 'w', newline='', encoding='utf-8-sig') as csvfile:
+        fieldnames = ["Name", "Occupation", "LinkedIn-url"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
     while num_of_results != len(results) and page < 10:
         num_of_results = len(results)
         url = 'https://www.google.com/search?q=%7C+Linkedin+' + quote(
@@ -123,7 +120,7 @@ if __name__ == '__main__':
                         nameindex = employee[1].rfind(">")
                         occupationindex = max(employee[2].rfind('%s' %s) for s in ('-', '...'))
                         employee_name = employee[1][nameindex + 1:]
-                        additional_search = re.findall('(?i)%s (.*?) at %s' %(employee_name, company_name), r.text)
+                        additional_search = re.findall('(?i)%s [\|](.*?) at %s' %(employee_name, company_name), r.text)
                         if additional_search:
                             additional_searchindex = max(additional_search[0].rfind('%s' % s) for s in ('.', '|'))
                             additional_search = additional_search[0][additional_searchindex+1:]
@@ -147,7 +144,7 @@ if __name__ == '__main__':
                             if employee_name not in NAMES_FINISHED:
                                 NAMES_FINISHED.append(employee_name)
                                 results.append(employee_result["LinkedIn-url"])
-                                write_csv(employee_result, company_name)
+                                write_csv(employee_result, company_filename)
                 else:
                     failure += 2
                     print('.', end='', flush=True)
