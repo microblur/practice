@@ -114,7 +114,7 @@ if __name__ == '__main__':
             try:
                 r = requests.get(url, timeout=10)
                 if r.status_code == 200:
-                    employees = re.findall('<a href="/url\?q=(https://nz.linkedin.com/in/.*?)[\/]?&amp.*?><h3 class="zBAuLc"><div class="BNeawe vvjwJb AP7Wnd">(.*?)[\s]?-[\s](.*?)[\s]?[\|\-][\s]?LinkedIn</div>', r.text)
+                    employees = re.findall('<a href="/url\?q=(https://nz.linkedin.com/in/.*?)[\/]?&amp.*?><h3 class="zBAuLc"><div class="BNeawe vvjwJb AP7Wnd">(.*?)[\s]?-[\s](.*?)[\s]?[\-\|][\s]?LinkedIn</div>', r.text)
                     for index in range(len(employees)):
                         employee = employees[index]
                         nameindex = employee[1].rfind(">")
@@ -169,3 +169,4 @@ if __name__ == '__main__':
         f.write('Total employees on linkedin: ' + str(len(results)) + '\n')
         f.write('Employees without occupation: '+str(num_of_fail_occupation_employee))
     print("Data is written to " + company_name + ' result.csv file', flush=True)
+    input("Press anything to exit")
